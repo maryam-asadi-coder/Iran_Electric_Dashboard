@@ -1,0 +1,8 @@
+Flask
+pandas
+plotly
+openpyxl
+flask
+pandas
+openpyxl
+pip install flask-cors

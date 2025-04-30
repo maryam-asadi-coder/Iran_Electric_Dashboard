@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Iran Electricity Dashboard</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+  
+    #bg-video {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      min-width: 100%;
+      min-height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+  
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+  
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      width: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+  
+    .title-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .main-title {
+      font-size: 32px;
+      color: #001f3f;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.4);
+      margin: 0;
+    }
+  
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 25px;
+      max-width: 80%;
+    }
+  
+    .energy-button {
+      background-color: #001f3f;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      font-size: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+  
+    .energy-button:hover {
+      background-color: #00aaff;
+    }
+  
+    .chart-container {
+      width: 60vw;
+      max-width: 900px;
+      height: 400px;
+      background-color: rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    #no-data-message {
+      position: absolute;
+      color: white;
+      font-size: 16px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <video autoplay muted loop id="bg-video">
+    <source src="{{ url_for('static', filename='video/background.mp4') }}" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <div class="overlay">
+    <div class="content">
+      <div class="title-container">
+        <h1 class="main-title">Iran Electricity Portfolio 1967–2020</h1>
+      </div>
+      <div class="button-group">
+        {% for energy in energy_types %}
+          <button class="energy-button" onclick="updateChart('{{ energy }}')">{{ energy }}</button>
+        {% endfor %}
+      </div>
+      <div class="chart-container">
+        <div id="no-data-message">No data available for this energy type.</div>
+        <canvas id="energyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let energyChart;
+
+    function updateChart(energyType) {
+      console.log(`Fetching data for: ${energyType}`);
+      fetch(`/data/${energyType}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log(`Data received for ${energyType}:`, data);
+          const ctx = document.getElementById('energyChart').getContext('2d');
+          const noDataMessage = document.getElementById('no-data-message');
+
+          noDataMessage.style.display = 'none';
+
+          if (energyChart) {
+            energyChart.destroy();
+          }
+
+          const isEmpty = !data.labels || !data.values || data.labels.length === 0 || data.values.length === 0;
+          const isAllZeros = !isEmpty && data.values.every(value => value === 0);
+          let chartLabel = energyType;
+
+          if (isEmpty) {
+            console.log(`No data returned for ${energyType}`);
+            noDataMessage.style.display = 'block';
+            return;
+          }
+
+          if (isAllZeros && (energyType === 'Tidal' || energyType === 'Geo')) {
+            chartLabel += ' (No significant data recorded)';
+          }
+
+          energyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: data.labels,
+              datasets: [{
+                label: chartLabel,
+                data: data.values,
+                borderColor: '#001f3f',
+                backgroundColor: 'rgba(0, 191, 255, 0.2)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: { color: 'white' }
+                }
+              },
+              scales: {
+                x: {
+                  ticks: { color: 'white' }
+                },
+                y: {
+                  ticks: { color: 'white' },
+                  beginAtZero: true,
+                  suggestedMax: isAllZeros ? 1 : undefined
+                }
+              }
+            }
+          });
+        })
+        .catch(error => {
+          console.error(`Fetch error for ${energyType}:`, error);
+          const noDataMessage = document.getElementById('no-data-message');
+          noDataMessage.style.display = 'block';
+        });
+    }
+
+    updateChart('Steam');
+  </script>
+</body>
+</html>
