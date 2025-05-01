@@ -33,7 +33,7 @@ Make sure you have Python 3.x installed on your system. You will also need to in
 pip install Flask pandas plotly openpyxl
 Running the Application
 1.Clone this repository to your local machine:
-git clone https://github.com/yourusername/Iran_Electric_Dashboard.git
+git clone https://github.com/maryam-asadi-coder/Iran_Electric_Dashboard/Iran_Electric_Dashboard.git
 cd Iran_Electric_Dashboard
 2.Run the Flask server:
 python app.py
